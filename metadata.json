@@ -1,0 +1,6 @@
+{
+  "name": "AURA ORO | Luxury Ring Sizer & Italian Jewelry Atelier",
+  "description": "Interactive screen ring sizer, physical calibration, international size conversion, and Italian minimal gold jewelry atelier.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

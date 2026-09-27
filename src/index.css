@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+}
+
+.font-serif {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.font-sans {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+/* Luxury Gold & Metal Gradients */
+.gold-gradient-text {
+  background: linear-gradient(135deg, #FFF1D0 0%, #ECC571 35%, #D4AF37 60%, #AA822A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gold-gradient-border {
+  border-image: linear-gradient(to right, rgba(212, 175, 55, 0.4), rgba(255, 235, 179, 0.7), rgba(212, 175, 55, 0.4)) 1;
+}
+
+.gold-glow {
+  box-shadow: 0 0 25px -5px rgba(212, 175, 55, 0.25);
+}
+
+.ring-shadow {
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.15);
+}
+
+/* Precision Graph Paper Pattern matching Pinterest phone video */
+.bg-graph-grid {
+  background-color: #f8fafc;
+  background-image: 
+    linear-gradient(to right, rgba(71, 85, 105, 0.10) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(71, 85, 105, 0.10) 1px, transparent 1px),
+    linear-gradient(to right, rgba(30, 64, 175, 0.22) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(30, 64, 175, 0.22) 1px, transparent 1px);
+  background-size: 10px 10px, 10px 10px, 50px 50px, 50px 50px;
+}
+
+/* Custom scrollbar for size roller table */
+.size-table-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.size-table-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.size-table-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
