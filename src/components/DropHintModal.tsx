@@ -60,7 +60,11 @@ export const DropHintModal: React.FC<DropHintModalProps> = ({
   };
 
   const handleCopyLink = () => {
-    const url = window.location.href.split('?')[0] + `?size=${selectedSize}&ring=${activeRing?.id || 'minimal-luxe-bar'}&metal=${selectedMetal}`;
+    const baseUrl = window.location.href.split('?')[0];
+    const sizeParam = encodeURIComponent(selectedSize);
+    const ringParam = encodeURIComponent(activeRing?.id || 'minimal-luxe-bar');
+    const metalParam = encodeURIComponent(selectedMetal);
+    const url = `${baseUrl}?size=${sizeParam}&ring=${ringParam}&metal=${metalParam}`;
     navigator.clipboard.writeText(url);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2500);

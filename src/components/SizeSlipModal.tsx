@@ -1,6 +1,7 @@
 import React from 'react';
-import { X, Download, Check, Sparkles, FileImage, ShieldCheck } from 'lucide-react';
+import { X, Download, Check, Sparkles, FileImage, ShieldCheck, Globe } from 'lucide-react';
 import { downloadPngFile } from '../utils/generateRingSlip';
+import { RingSizeEntry } from '../types/ring';
 
 interface SizeSlipModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface SizeSlipModalProps {
   diameterMm: number;
   standard?: 'UK' | 'US';
   funFact?: string;
+  entry?: RingSizeEntry;
 }
 
 export const SizeSlipModal: React.FC<SizeSlipModalProps> = ({
@@ -21,17 +23,18 @@ export const SizeSlipModal: React.FC<SizeSlipModalProps> = ({
   ukSizeName,
   diameterMm,
   standard = 'US',
-  funFact
+  funFact,
+  entry
 }) => {
   if (!isOpen || !slipImageUrl) return null;
 
   const isUk = standard === 'UK';
-  const displayTitle = isUk && ukSizeName ? `UK ${ukSizeName}` : `US ${sizeName}`;
+  const displayTitle = isUk && (entry?.uk || ukSizeName) ? `UK ${entry?.uk || ukSizeName}` : `US ${entry?.us || sizeName}`;
 
   const handleDownloadAgain = () => {
-    const filename = isUk && ukSizeName
-      ? `Ring-Measurement-Slip-UK-${ukSizeName.replace(/[\s/]+/g, '_')}-${diameterMm.toFixed(2)}mm.png`
-      : `Ring-Measurement-Slip-US-${sizeName.replace(/[\s/]+/g, '_')}-${diameterMm.toFixed(2)}mm.png`;
+    const filename = isUk && (entry?.uk || ukSizeName)
+      ? `Ring-Measurement-Slip-UK-${(entry?.uk || ukSizeName || '').replace(/[\s/]+/g, '_')}-${diameterMm.toFixed(2)}mm.png`
+      : `Ring-Measurement-Slip-US-${(entry?.us || sizeName).replace(/[\s/]+/g, '_')}-${diameterMm.toFixed(2)}mm.png`;
     downloadPngFile(slipImageUrl, filename);
   };
 
@@ -52,7 +55,7 @@ export const SizeSlipModal: React.FC<SizeSlipModalProps> = ({
                 </span>
               </div>
               <div className="text-xs text-slate-500">
-                {displayTitle} · {diameterMm.toFixed(2)} mm diameter
+                {displayTitle} · {diameterMm.toFixed(2)} mm diameter · All Sizes Included
               </div>
             </div>
           </div>
@@ -63,6 +66,43 @@ export const SizeSlipModal: React.FC<SizeSlipModalProps> = ({
           >
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* All International Sizing Standards Badges Grid */}
+        <div className="mx-4 mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+          <div className="flex items-center justify-between text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-2">
+            <span className="flex items-center gap-1">
+              <Globe className="w-3 h-3 text-slate-700" />
+              All International Sizes on Slip
+            </span>
+            <span className="font-mono text-slate-600">Ø {diameterMm.toFixed(2)} mm</span>
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 text-center font-mono">
+            <div className="p-1 bg-white rounded border border-slate-200 shadow-2xs">
+              <div className="text-[9px] text-slate-400 font-sans uppercase">USA / CA</div>
+              <div className="text-xs font-bold text-slate-900">US {entry?.us || sizeName}</div>
+            </div>
+            <div className="p-1 bg-white rounded border border-slate-200 shadow-2xs">
+              <div className="text-[9px] text-slate-400 font-sans uppercase">UK / AU</div>
+              <div className="text-xs font-bold text-slate-900">{entry?.uk || ukSizeName || '-'}</div>
+            </div>
+            <div className="p-1 bg-white rounded border border-slate-200 shadow-2xs">
+              <div className="text-[9px] text-slate-400 font-sans uppercase">EU / ISO</div>
+              <div className="text-xs font-bold text-slate-800">{entry?.eu || '-'}</div>
+            </div>
+            <div className="p-1 bg-white rounded border border-slate-200 shadow-2xs">
+              <div className="text-[9px] text-slate-400 font-sans uppercase">IT / ES</div>
+              <div className="text-xs font-bold text-slate-800">{entry?.it || '-'}</div>
+            </div>
+            <div className="p-1 bg-white rounded border border-slate-200 shadow-2xs">
+              <div className="text-[9px] text-slate-400 font-sans uppercase">JP / CH</div>
+              <div className="text-xs font-bold text-slate-800">{entry?.jpCh || entry?.jp || '-'}</div>
+            </div>
+            <div className="p-1 bg-white rounded border border-slate-200 shadow-2xs">
+              <div className="text-[9px] text-slate-400 font-sans uppercase">CIRCUMF</div>
+              <div className="text-[11px] font-bold text-slate-800 pt-0.5">{(diameterMm * Math.PI).toFixed(1)}mm</div>
+            </div>
+          </div>
         </div>
 
         {/* Fun Fact Callout Card */}

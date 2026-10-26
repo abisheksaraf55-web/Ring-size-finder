@@ -49,6 +49,7 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<'sizer' | 'dimensions' | 'table'>('sizer');
   const [standard, setStandard] = useState<'UK' | 'US'>('UK'); // Support UK Letter sizes as requested
   const [showDemoRing, setShowDemoRing] = useState<boolean>(false); // Pure transparent ring gauge for physical ring placement
+  const [showGrid, setShowGrid] = useState<boolean>(false); // Clean plain canvas by default, eliminates distracting square grid lines behind circle
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const [isGeneratingSlip, setIsGeneratingSlip] = useState<boolean>(false);
   const [isSlipModalOpen, setIsSlipModalOpen] = useState<boolean>(false);
@@ -72,6 +73,30 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
   // Dragging interaction state for on-screen circle
   const ringContainerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isAdjusting, setIsAdjusting] = useState<boolean>(false);
+  const adjustTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const triggerAdjusting = useCallback(() => {
+    setIsAdjusting(true);
+    if (adjustTimerRef.current) {
+      clearTimeout(adjustTimerRef.current);
+    }
+    adjustTimerRef.current = setTimeout(() => {
+      setIsAdjusting(false);
+    }, 1100);
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (adjustTimerRef.current) {
+        clearTimeout(adjustTimerRef.current);
+      }
+    };
+  }, []);
+
+  const isChanging = isDragging || isAdjusting;
+
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const activeRowRef = useRef<HTMLDivElement>(null);
   const centerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -127,26 +152,32 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
   }, [closestEntry.us, activeSubTab, isDragging]);
 
   // Adjust diameter with clamp between 11.5mm and 24.8mm (supporting up to US Size 16)
-  const handleDiameterChange = (val: number) => {
+  const handleDiameterChange = (val: number, keepAdjusting = true) => {
     const clamped = Math.min(24.8, Math.max(11.5, parseFloat(val.toFixed(2))));
     setDiameterMm(clamped);
     const matched = getClosestSizeByDiameter(clamped);
     setSelectedSize(matched.us);
     setIsSaved(false);
+    if (keepAdjusting) {
+      triggerAdjusting();
+    }
   };
 
   const handleFineTune = (delta: number) => {
     triggerHaptic(35);
+    triggerAdjusting();
     handleDiameterChange(diameterMm + delta);
   };
 
   const handleResetDiameter = () => {
     triggerHaptic([40, 50, 40]);
+    triggerAdjusting();
     handleDiameterChange(17.32);
   };
 
   const handleSelectRow = (entry: RingSizeEntry) => {
     triggerHaptic(45);
+    triggerAdjusting();
     handleDiameterChange(entry.diameterMm);
   };
 
@@ -210,6 +241,7 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
   // Pointer drag to resize ring interactively on canvas/screen with 120fps/60fps smoothness
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true);
+    triggerAdjusting();
     triggerHaptic(35);
     e.currentTarget.setPointerCapture(e.pointerId);
 
@@ -225,6 +257,7 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging) return;
+    triggerAdjusting();
 
     if (centerRef.current.x === 0 && centerRef.current.y === 0 && ringContainerRef.current) {
       const rect = ringContainerRef.current.getBoundingClientRect();
@@ -244,12 +277,13 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
       cancelAnimationFrame(rafIdRef.current);
     }
     rafIdRef.current = requestAnimationFrame(() => {
-      handleDiameterChange(computedMm);
+      handleDiameterChange(computedMm, true);
     });
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
     setIsDragging(false);
+    triggerAdjusting();
     if (rafIdRef.current) {
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
@@ -357,8 +391,10 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
         {/* --- SUBTAB 1: INTERACTIVE SIZER CANVAS & MEASURING GRID --- */}
         {activeSubTab === 'sizer' && (
           <>
-            {/* 2. THE MILLIMETER GRAPH GRID MEASURING SURFACE (Photo Match) */}
-            <div className="relative bg-graph-grid flex flex-col items-center justify-between border-b border-slate-200 select-none overflow-hidden min-h-[310px]">
+            {/* 2. THE MEASURING SURFACE (Pure White or Precision Millimeter Grid) */}
+            <div className={`relative flex flex-col items-center justify-between border-b border-slate-200 select-none overflow-hidden min-h-[310px] transition-colors ${
+              showGrid ? 'bg-graph-grid' : 'bg-white'
+            }`}>
               {/* Top Toolbar Overlay on Grid */}
               <div className="w-full px-3.5 pt-3 flex items-center justify-between z-20 text-[11px] text-slate-600 gap-1.5 flex-wrap">
                 <div
@@ -401,19 +437,37 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
                   </button>
                 </div>
 
-                <button
-                  onClick={() => {
-                    triggerHaptic(35);
-                    setShowDemoRing(!showDemoRing);
-                  }}
-                  className={`px-2.5 py-0.5 rounded-full border transition-all text-[11px] font-medium cursor-pointer ${
-                    showDemoRing
-                      ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
-                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  {showDemoRing ? 'Ring Demo: ON' : 'Place Real Ring'}
-                </button>
+                <div className="flex items-center gap-1">
+                  {/* Grid squares toggle button */}
+                  <button
+                    onClick={() => {
+                      triggerHaptic(30);
+                      setShowGrid(!showGrid);
+                    }}
+                    title="Toggle background grid squares on/off"
+                    className={`px-2 py-0.5 rounded-full border transition-all text-[11px] font-medium cursor-pointer ${
+                      showGrid
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {showGrid ? 'Grid: ON' : 'Grid: OFF'}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      triggerHaptic(35);
+                      setShowDemoRing(!showDemoRing);
+                    }}
+                    className={`px-2.5 py-0.5 rounded-full border transition-all text-[11px] font-medium cursor-pointer ${
+                      showDemoRing
+                        ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {showDemoRing ? 'Demo: ON' : 'Real Ring'}
+                  </button>
+                </div>
               </div>
 
               {/* The Interactive Ring Target Canvas */}
@@ -433,10 +487,43 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
                   <span className="font-semibold text-slate-700">10 mm reference</span>
                 </div>
 
-                {/* Concentric coordinate axes lines */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40">
-                  <div className="w-full h-[1px] bg-slate-300" />
-                  <div className="h-full w-[1px] bg-slate-300 absolute" />
+                {/* Concentric coordinate axes lines (illuminated when grid is enabled OR while changing) */}
+                <div
+                  className={`absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-300 ${
+                    showGrid ? 'opacity-25' : isChanging ? 'opacity-20' : 'opacity-0'
+                  }`}
+                >
+                  <div className="w-full h-[1px] bg-slate-400" />
+                  <div className="h-full w-[1px] bg-slate-400 absolute" />
+                </div>
+
+                {/* Dynamic Caliper Graph Tangent Lines (appear while changing) */}
+                <div
+                  className={`absolute inset-0 pointer-events-none transition-opacity duration-200 ${
+                    isChanging ? 'opacity-100' : 'opacity-0'
+                  }`}
+                >
+                  {/* Left tangent caliper line */}
+                  <div
+                    style={{
+                      left: `calc(50% - ${ringDiameterPx / 2}px)`
+                    }}
+                    className="absolute top-4 bottom-7 w-[1px] border-l border-dashed border-slate-400/80 -translate-x-[0.5px]"
+                  >
+                    <div className="absolute top-0 -left-1 w-2.5 h-[1.5px] bg-slate-600" />
+                    <div className="absolute bottom-0 -left-1 w-2.5 h-[1.5px] bg-slate-600" />
+                  </div>
+
+                  {/* Right tangent caliper line */}
+                  <div
+                    style={{
+                      left: `calc(50% + ${ringDiameterPx / 2}px)`
+                    }}
+                    className="absolute top-4 bottom-7 w-[1px] border-l border-dashed border-slate-400/80 -translate-x-[0.5px]"
+                  >
+                    <div className="absolute top-0 -left-1 w-2.5 h-[1.5px] bg-slate-600" />
+                    <div className="absolute bottom-0 -left-1 w-2.5 h-[1.5px] bg-slate-600" />
+                  </div>
                 </div>
 
                 {/* The Measured Ring Gauge Circle */}
@@ -481,45 +568,62 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
                     }}
                     className="rounded-full border-2 border-slate-900 bg-transparent flex items-center justify-center relative shadow-xs transform-gpu"
                   >
-                    {/* Center Target Point */}
-                    <div className="w-1.5 h-1.5 bg-slate-900 rounded-full" />
+                    {/* Minimal Center Target Point */}
+                    <div className="w-1.5 h-1.5 bg-slate-900/60 rounded-full pointer-events-none" />
 
                     {/* Cardinal Alignment Crosshair Ticks for physical ring placement */}
-                    <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-[1px] h-3 bg-slate-900 pointer-events-none" />
-                    <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-[1px] h-3 bg-slate-900 pointer-events-none" />
-                    <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 h-[1px] w-3 bg-slate-900 pointer-events-none" />
-                    <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 h-[1px] w-3 bg-slate-900 pointer-events-none" />
+                    <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-[1px] h-3 bg-slate-800 pointer-events-none" />
+                    <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-[1px] h-3 bg-slate-800 pointer-events-none" />
+                    <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 h-[1px] w-3 bg-slate-800 pointer-events-none" />
+                    <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 h-[1px] w-3 bg-slate-800 pointer-events-none" />
 
-                    {/* Full Inside Diameter Dimension Line & Exact Diameter Value */}
+                    {/* DYNAMIC GRAPH DIMENSION LINE & LIVE NUMBER WHILE CHANGING */}
                     <div
-                      style={{
-                        width: '100%',
-                        transition: isDragging
-                          ? 'none'
-                          : 'width 0.24s cubic-bezier(0.16, 1, 0.3, 1)'
-                      }}
-                      className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[1px] bg-slate-300 pointer-events-none flex items-center justify-center"
+                      className={`absolute inset-0 flex items-center justify-between pointer-events-none transition-all duration-200 px-1 z-20 ${
+                        isChanging ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+                      }`}
                     >
-                      {/* Left and right inner rim dimension arrows */}
-                      <div className="absolute left-1 w-1.5 h-1.5 border-l border-t border-slate-700 rotate-[-45deg]" />
-                      <div className="absolute right-1 w-1.5 h-1.5 border-r border-t border-slate-700 rotate-[45deg]" />
+                      {/* Left graph dimension line & arrow */}
+                      <div className="flex-1 flex items-center">
+                        <div className="w-0.5 h-3 bg-slate-800 rounded-full" />
+                        <div className="w-0 h-0 border-y-[3.5px] border-y-transparent border-r-[5px] border-r-slate-800" />
+                        <div className="flex-1 h-[1.5px] bg-slate-800" />
+                      </div>
 
-                      {/* Clear Diameter Number & Active Size Badge */}
-                      <div className="bg-white px-2 py-0.5 rounded shadow-xs border border-slate-300 flex items-center gap-1.5 text-[11px] font-mono font-bold text-slate-900 select-none z-10">
-                        <span>Ø {diameterMm.toFixed(2)} mm</span>
-                        <span className="text-slate-300 font-normal">|</span>
-                        <span className="text-slate-700 font-semibold">
-                          {standard === 'UK' ? `UK ${closestEntry.uk}` : `US ${closestEntry.us}`}
+                      {/* Center live number badge */}
+                      <div className="mx-1 px-2 py-0.5 bg-slate-900/90 text-white backdrop-blur-xs rounded-full shadow-md border border-slate-700/80 flex items-center gap-1.5 text-[11px] font-mono font-bold select-none shrink-0">
+                        <span className="text-amber-400 font-semibold text-[10px]">Ø</span>
+                        <span>{diameterMm.toFixed(2)}mm</span>
+                        <span className="text-slate-500 font-sans text-[10px]">|</span>
+                        <span className="text-slate-100 font-sans text-[10px] font-semibold">
+                          {standard === 'UK' ? closestEntry.uk : `US ${closestEntry.us}`}
                         </span>
+                      </div>
+
+                      {/* Right graph dimension line & arrow */}
+                      <div className="flex-1 flex items-center justify-end">
+                        <div className="flex-1 h-[1.5px] bg-slate-800" />
+                        <div className="w-0 h-0 border-y-[3.5px] border-y-transparent border-l-[5px] border-l-slate-800" />
+                        <div className="w-0.5 h-3 bg-slate-800 rounded-full" />
                       </div>
                     </div>
 
                     {/* Drag Resize Handle Knob */}
                     <div
                       title="Drag to resize ring"
-                      className="absolute -right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition-transform cursor-ew-resize z-30 touch-none select-none ring-4 ring-white"
+                      className="absolute -right-3.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-slate-900 text-white flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition-transform cursor-ew-resize z-30 touch-none select-none ring-2 ring-white"
                     >
-                      <div className="w-2.5 h-2.5 rounded-full bg-white shadow-xs" />
+                      <div className="w-2 h-2 rounded-full bg-white shadow-xs" />
+
+                      {/* Floating live number badge above knob for thumb clearance while dragging */}
+                      <div
+                        className={`absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-900 text-white text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shadow-md pointer-events-none transition-all duration-150 ${
+                          isChanging ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-1 scale-90'
+                        }`}
+                      >
+                        {diameterMm.toFixed(2)} mm
+                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-0 h-0 border-x-[3px] border-x-transparent border-t-[3px] border-t-slate-900" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -557,11 +661,26 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
                   max={24.8}
                   step={0.02}
                   value={diameterMm}
-                  onPointerDown={() => setIsDragging(true)}
-                  onPointerUp={() => setIsDragging(false)}
-                  onTouchStart={() => setIsDragging(true)}
-                  onTouchEnd={() => setIsDragging(false)}
-                  onChange={(e) => handleDiameterChange(parseFloat(e.target.value))}
+                  onPointerDown={() => {
+                    setIsDragging(true);
+                    triggerAdjusting();
+                  }}
+                  onPointerUp={() => {
+                    setIsDragging(false);
+                    triggerAdjusting();
+                  }}
+                  onTouchStart={() => {
+                    setIsDragging(true);
+                    triggerAdjusting();
+                  }}
+                  onTouchEnd={() => {
+                    setIsDragging(false);
+                    triggerAdjusting();
+                  }}
+                  onChange={(e) => {
+                    handleDiameterChange(parseFloat(e.target.value), true);
+                    triggerAdjusting();
+                  }}
                   className="flex-1 accent-slate-900 cursor-pointer h-2 bg-slate-200 rounded-lg appearance-none transition-none"
                 />
 
@@ -993,6 +1112,7 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
         ukSizeName={closestEntry.uk}
         diameterMm={diameterMm}
         standard={standard}
+        entry={closestEntry}
         funFact={getRingSizeFunFact(closestEntry.us, closestEntry.uk)}
       />
     </section>

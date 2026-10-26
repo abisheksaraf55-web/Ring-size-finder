@@ -1,5 +1,6 @@
 import { RingSizeEntry } from '../types/ring';
 import { getRingSizeFunFact } from '../data/ringFunFacts';
+import { RING_SIZE_DATA } from '../data/ringSizes';
 
 export interface RingSlipData {
   entry: RingSizeEntry;
@@ -12,9 +13,10 @@ export interface RingSlipData {
 }
 
 /**
- * Generates a clean, simple white bill / receipt slip for the measured ring.
- * Features classic receipt typography, itemized specifications, clean line art ring diagram,
- * size fun facts, barcode, and clear diameter and size details.
+ * Generates an all-inclusive white bill / receipt slip for the measured ring.
+ * Features classic receipt typography, all international size standards (US, UK, EU, IT, JP, DIN),
+ * visual badges card, technical ring diagram, international size conversion table,
+ * size fun facts, barcode, and jeweler crafting specifications.
  */
 export function generateRingSlipImage(data: RingSlipData): Promise<string> {
   return new Promise((resolve) => {
@@ -23,16 +25,15 @@ export function generateRingSlipImage(data: RingSlipData): Promise<string> {
       measuredDiameterMm,
       measuredCircumferenceMm,
       dateStr,
-      isCalibrated,
       primaryStandard = 'US',
       funFact
     } = data;
     const isUkPrimary = primaryStandard === 'UK';
 
-    // High resolution canvas for sharp receipt printing & display (width: 600, height: 1040)
+    // High resolution canvas for sharp receipt printing & display (width: 600, height: 1400)
     const canvas = document.createElement('canvas');
     canvas.width = 600;
-    canvas.height = 1040;
+    canvas.height = 1400;
     const ctx = canvas.getContext('2d');
     if (!ctx) {
       resolve('');
@@ -41,12 +42,12 @@ export function generateRingSlipImage(data: RingSlipData): Promise<string> {
 
     // 1. Pure White Background like a paper bill
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 600, 1040);
+    ctx.fillRect(0, 0, 600, 1400);
 
     // Subtle crisp border around the bill paper
     ctx.strokeStyle = '#e2e8f0';
     ctx.lineWidth = 2;
-    ctx.strokeRect(10, 10, 580, 1020);
+    ctx.strokeRect(10, 10, 580, 1380);
 
     // Helper: Draw classic dashed receipt divider line
     const drawDashedLine = (y: number) => {
@@ -80,20 +81,20 @@ export function generateRingSlipImage(data: RingSlipData): Promise<string> {
     ctx.textAlign = 'center';
     ctx.font = 'bold 22px "Courier New", Courier, monospace';
     ctx.letterSpacing = '2px';
-    ctx.fillText('AURA ORO JEWELERS', 300, 55);
+    ctx.fillText('AURA ORO JEWELERS', 300, 52);
 
     ctx.font = '12px "Courier New", Courier, monospace';
     ctx.fillStyle = '#475569';
     ctx.letterSpacing = '1px';
-    ctx.fillText('RING SIZING & MEASUREMENT STUDIO', 300, 78);
-    ctx.fillText('1:1 SCALE PHYSICAL ACCURACY', 300, 96);
+    ctx.fillText('RING SIZING & MEASUREMENT STUDIO', 300, 74);
+    ctx.fillText('1:1 SCALE PHYSICAL ACCURACY · ISO 8653', 300, 92);
 
     // Bill title
     ctx.font = 'bold 15px "Courier New", Courier, monospace';
     ctx.fillStyle = '#0f172a';
-    ctx.fillText('*** MEASUREMENT BILL / SLIP ***', 300, 126);
+    ctx.fillText('*** OFFICIAL ALL-SIZE MEASUREMENT SLIP ***', 300, 120);
 
-    drawDashedLine(142);
+    drawDashedLine(136);
 
     // 3. Bill Metadata (Receipt number, Date, Calibrated status)
     const billNumber = `REC-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -101,76 +102,121 @@ export function generateRingSlipImage(data: RingSlipData): Promise<string> {
     ctx.fillStyle = '#1e293b';
 
     ctx.textAlign = 'left';
-    ctx.fillText(`BILL NO:  ${billNumber}`, 36, 168);
-    ctx.fillText(`DATE:     ${dateStr}`, 36, 188);
+    ctx.fillText(`BILL NO:  ${billNumber}`, 36, 160);
+    ctx.fillText(`DATE:     ${dateStr}`, 36, 178);
 
     ctx.textAlign = 'right';
-    ctx.fillText('STATUS: UNIVERSAL 1:1 SCALE', 564, 168);
-    ctx.fillText('TYPE:   DIGITAL GAUGE', 564, 188);
+    ctx.fillText('STATUS: UNIVERSAL 1:1 SCALE', 564, 160);
+    ctx.fillText('TYPE:   PRECISION CALIPER', 564, 178);
 
-    drawDashedLine(205);
+    drawDashedLine(194);
 
-    // 4. Itemized Bill Table Header
+    // 4. Itemized All Size Specifications Header
     ctx.font = 'bold 12px "Courier New", Courier, monospace';
     ctx.fillStyle = '#0f172a';
     ctx.textAlign = 'left';
-    ctx.fillText('DESCRIPTION', 36, 226);
+    ctx.fillText('ALL SIZE STANDARDS & SPECS', 36, 214);
     ctx.textAlign = 'right';
-    ctx.fillText('VALUE', 564, 226);
+    ctx.fillText('CONFIRMED VALUE', 564, 214);
 
-    drawDashedLine(238);
+    drawDashedLine(224);
 
-    // 5. Line Items with dot leaders or receipt alignment
-    const items = isUkPrimary ? [
-      { label: 'Primary Ring Size (UK)', val: `Size ${entry.uk} (US ${entry.us})`, bold: true },
+    // 5. Line Items covering ALL sizing standards
+    const items = [
+      { label: 'Primary Confirmed Size', val: isUkPrimary ? `UK Size ${entry.uk} (US ${entry.us})` : `US Size ${entry.us} (UK ${entry.uk})`, bold: true },
       { label: 'Inside Diameter (Ø)', val: `${measuredDiameterMm.toFixed(2)} mm  (${(measuredDiameterMm / 25.4).toFixed(3)}″)`, bold: true },
       { label: 'Inside Circumference', val: `${measuredCircumferenceMm.toFixed(2)} mm  (${(measuredCircumferenceMm / 25.4).toFixed(3)}″)`, bold: false },
-      { label: 'USA & Canada Standard', val: `US ${entry.us}`, bold: false },
-      { label: 'Europe (EU / ISO)', val: `${entry.eu}`, bold: false },
-      { label: 'Italy & Spain (IT/ES)', val: `${entry.it}`, bold: false },
-      { label: 'Japan & China (JP/CH)', val: `${entry.jpCh || entry.jp}`, bold: false },
-      { label: 'Tolerance Standard', val: '±0.05 mm', bold: false }
-    ] : [
-      { label: 'Primary Ring Size', val: `US ${entry.us}`, bold: true },
-      { label: 'Inside Diameter (Ø)', val: `${measuredDiameterMm.toFixed(2)} mm  (${(measuredDiameterMm / 25.4).toFixed(3)}″)`, bold: true },
-      { label: 'Inside Circumference', val: `${measuredCircumferenceMm.toFixed(2)} mm  (${(measuredCircumferenceMm / 25.4).toFixed(3)}″)`, bold: false },
-      { label: 'UK & Australia (GB)', val: `${entry.uk}`, bold: false },
-      { label: 'Europe (EU / ISO)', val: `${entry.eu}`, bold: false },
-      { label: 'Italy & Spain (IT/ES)', val: `${entry.it}`, bold: false },
-      { label: 'Japan & China (JP/CH)', val: `${entry.jpCh || entry.jp}`, bold: false },
-      { label: 'Tolerance Standard', val: '±0.05 mm', bold: false }
+      { label: 'USA & Canada Standard (US)', val: `US ${entry.us}`, bold: false },
+      { label: 'UK, Australia & NZ (AU/GB)', val: `UK ${entry.uk}`, bold: false },
+      { label: 'Europe / ISO 8653 (EU)', val: `EU ${entry.eu} mm`, bold: false },
+      { label: 'Italy & Spain (IT / ES)', val: `IT ${entry.it}`, bold: false },
+      { label: 'Japan & China (JP / CH)', val: `JP ${entry.jpCh || entry.jp}`, bold: false },
+      { label: 'Germany Standard (DIN)', val: `Ø ${entry.diameterMm} mm`, bold: false },
+      { label: 'Tolerance Standard', val: '±0.05 mm (Grade A)', bold: false }
     ];
 
-    let currentY = 264;
+    let currentY = 246;
     items.forEach((item) => {
       ctx.textAlign = 'left';
-      ctx.font = item.bold ? 'bold 13px "Courier New", Courier, monospace' : '12px "Courier New", Courier, monospace';
+      ctx.font = item.bold ? 'bold 12px "Courier New", Courier, monospace' : '11px "Courier New", Courier, monospace';
       ctx.fillStyle = item.bold ? '#0f172a' : '#334155';
       ctx.fillText(item.label, 36, currentY);
 
       ctx.textAlign = 'right';
-      ctx.font = item.bold ? 'bold 13px "Courier New", Courier, monospace' : '12px "Courier New", Courier, monospace';
+      ctx.font = item.bold ? 'bold 12px "Courier New", Courier, monospace' : '11px "Courier New", Courier, monospace';
       ctx.fillText(item.val, 564, currentY);
 
-      currentY += 26;
+      currentY += 21;
     });
 
     drawDashedLine(currentY);
-    currentY += 24;
+    currentY += 16;
 
-    // 6. Clean Minimal Ring Technical Drawing Box (White Bill Style)
-    // Box for the ring diagram
+    // 5B. VISUAL ALL-STANDARDS BADGES GRID CARD (Matches Live App)
+    ctx.fillStyle = '#f8fafc';
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(36, currentY, 528, 88, 5);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = 'bold 10px "Courier New", Courier, monospace';
+    ctx.fillStyle = '#475569';
+    ctx.textAlign = 'center';
+    ctx.fillText('--- ALL INTERNATIONAL MEASUREMENT STANDARDS ---', 300, currentY + 16);
+
+    // 8 Badges in 2 rows of 4 columns
+    const colWidth = 528 / 4;
+    const badgesRow1 = [
+      { std: 'USA / CA', val: `US ${entry.us}` },
+      { std: 'UK / AU', val: `UK ${entry.uk}` },
+      { std: 'EU / ISO', val: `${entry.eu}` },
+      { std: 'IT / ES', val: `${entry.it}` }
+    ];
+    const badgesRow2 = [
+      { std: 'JP / CH', val: `${entry.jpCh || entry.jp}` },
+      { std: 'GERMAN', val: `Ø${entry.diameterMm}` },
+      { std: 'INSIDE Ø', val: `${measuredDiameterMm.toFixed(2)}mm` },
+      { std: 'CIRCUMF', val: `${measuredCircumferenceMm.toFixed(1)}mm` }
+    ];
+
+    badgesRow1.forEach((b, idx) => {
+      const bx = 36 + idx * colWidth + colWidth / 2;
+      ctx.font = '9px "Courier New", Courier, monospace';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText(b.std, bx, currentY + 34);
+      ctx.font = 'bold 13px "Courier New", Courier, monospace';
+      ctx.fillStyle = '#0f172a';
+      ctx.fillText(b.val, bx, currentY + 49);
+    });
+
+    badgesRow2.forEach((b, idx) => {
+      const bx = 36 + idx * colWidth + colWidth / 2;
+      ctx.font = '9px "Courier New", Courier, monospace';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText(b.std, bx, currentY + 67);
+      ctx.font = 'bold 12px "Courier New", Courier, monospace';
+      ctx.fillStyle = '#0f172a';
+      ctx.fillText(b.val, bx, currentY + 80);
+    });
+
+    currentY += 102;
+    drawDashedLine(currentY);
+    currentY += 18;
+
+    // 6. Clean Minimal Ring Technical Drawing Box
     ctx.fillStyle = '#fafafa';
     ctx.strokeStyle = '#e2e8f0';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.roundRect(36, currentY, 528, 160, 6);
+    ctx.roundRect(36, currentY, 528, 140, 6);
     ctx.fill();
     ctx.stroke();
 
-    const ringCenterX = 150;
-    const ringCenterY = currentY + 80;
-    const drawRadius = 52;
+    const ringCenterX = 135;
+    const ringCenterY = currentY + 70;
+    const drawRadius = 46;
 
     // Center Crosshairs
     ctx.save();
@@ -178,16 +224,16 @@ export function generateRingSlipImage(data: RingSlipData): Promise<string> {
     ctx.lineWidth = 1;
     ctx.setLineDash([2, 2]);
     ctx.beginPath();
-    ctx.moveTo(ringCenterX - drawRadius - 20, ringCenterY);
-    ctx.lineTo(ringCenterX + drawRadius + 20, ringCenterY);
-    ctx.moveTo(ringCenterX, ringCenterY - drawRadius - 20);
-    ctx.lineTo(ringCenterX, ringCenterY + drawRadius + 20);
+    ctx.moveTo(ringCenterX - drawRadius - 18, ringCenterY);
+    ctx.lineTo(ringCenterX + drawRadius + 18, ringCenterY);
+    ctx.moveTo(ringCenterX, ringCenterY - drawRadius - 18);
+    ctx.lineTo(ringCenterX, ringCenterY + drawRadius + 18);
     ctx.stroke();
     ctx.restore();
 
-    // The Ring Outer & Inner Circle (Clean line art)
+    // The Ring Outer & Inner Circle
     ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 3.5;
+    ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.arc(ringCenterX, ringCenterY, drawRadius, 0, Math.PI * 2);
     ctx.stroke();
@@ -195,21 +241,21 @@ export function generateRingSlipImage(data: RingSlipData): Promise<string> {
     ctx.strokeStyle = '#64748b';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.arc(ringCenterX, ringCenterY, drawRadius - 6, 0, Math.PI * 2);
+    ctx.arc(ringCenterX, ringCenterY, drawRadius - 5, 0, Math.PI * 2);
     ctx.stroke();
 
     // Center point
     ctx.fillStyle = '#0f172a';
     ctx.beginPath();
-    ctx.arc(ringCenterX, ringCenterY, 3, 0, Math.PI * 2);
+    ctx.arc(ringCenterX, ringCenterY, 2.5, 0, Math.PI * 2);
     ctx.fill();
 
     // Diameter Dimension Arrow inside diagram
     ctx.strokeStyle = '#2563eb';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(ringCenterX - drawRadius + 6, ringCenterY);
-    ctx.lineTo(ringCenterX + drawRadius - 6, ringCenterY);
+    ctx.moveTo(ringCenterX - drawRadius + 5, ringCenterY);
+    ctx.lineTo(ringCenterX + drawRadius - 5, ringCenterY);
     ctx.stroke();
 
     // Dimension Arrowheads
@@ -217,60 +263,104 @@ export function generateRingSlipImage(data: RingSlipData): Promise<string> {
       ctx.fillStyle = '#2563eb';
       ctx.beginPath();
       ctx.moveTo(x, y);
-      ctx.lineTo(x + dir * 6, y - 4);
-      ctx.lineTo(x + dir * 6, y + 4);
+      ctx.lineTo(x + dir * 5, y - 3.5);
+      ctx.lineTo(x + dir * 5, y + 3.5);
       ctx.closePath();
       ctx.fill();
     };
-    drawArrowhead(ringCenterX - drawRadius + 6, ringCenterY, 1);
-    drawArrowhead(ringCenterX + drawRadius - 6, ringCenterY, -1);
+    drawArrowhead(ringCenterX - drawRadius + 5, ringCenterY, 1);
+    drawArrowhead(ringCenterX + drawRadius - 5, ringCenterY, -1);
 
     // Dimension Label on right of diagram
     ctx.textAlign = 'left';
     ctx.fillStyle = '#0f172a';
-    ctx.font = 'bold 15px "Courier New", Courier, monospace';
-    ctx.fillText(`MEASURED RING Ø: ${measuredDiameterMm.toFixed(2)} mm`, 270, currentY + 52);
+    ctx.font = 'bold 14px "Courier New", Courier, monospace';
+    ctx.fillText(`MEASURED RING Ø: ${measuredDiameterMm.toFixed(2)} mm`, 245, currentY + 44);
 
-    ctx.font = '12px "Courier New", Courier, monospace';
+    ctx.font = '11px "Courier New", Courier, monospace';
     ctx.fillStyle = '#475569';
-    ctx.fillText(`Inside Radius:    ${(measuredDiameterMm / 2).toFixed(2)} mm`, 270, currentY + 76);
-    ctx.fillText(`Circumference:    ${measuredCircumferenceMm.toFixed(2)} mm`, 270, currentY + 98);
-    ctx.fillText(`International:    US ${entry.us} / UK ${entry.uk} / EU ${entry.eu}`, 270, currentY + 120);
+    ctx.fillText(`Inside Radius:    ${(measuredDiameterMm / 2).toFixed(2)} mm`, 245, currentY + 66);
+    ctx.fillText(`Circumference:    ${measuredCircumferenceMm.toFixed(2)} mm`, 245, currentY + 86);
+    ctx.fillText(`All Sizes: US ${entry.us} | UK ${entry.uk} | EU ${entry.eu}`, 245, currentY + 106);
 
-    currentY += 175;
+    currentY += 152;
 
     // 7. TOTAL / HIGHLIGHT SECTION (Classic Receipt Bold Block)
     drawDoubleLine(currentY);
-    currentY += 22;
+    currentY += 20;
 
-    ctx.font = 'bold 16px "Courier New", Courier, monospace';
+    ctx.font = 'bold 15px "Courier New", Courier, monospace';
     ctx.fillStyle = '#0f172a';
     ctx.textAlign = 'left';
-    ctx.fillText(isUkPrimary ? 'CONFIRMED SIZE (UK):' : 'CONFIRMED SIZE:', 36, currentY);
+    ctx.fillText('CONFIRMED PRIMARY SIZE:', 36, currentY);
     ctx.textAlign = 'right';
-    ctx.font = 'bold 22px "Courier New", Courier, monospace';
-    ctx.fillText(isUkPrimary ? `UK ${entry.uk}` : `US ${entry.us}`, 564, currentY);
+    ctx.font = 'bold 21px "Courier New", Courier, monospace';
+    ctx.fillText(isUkPrimary ? `UK ${entry.uk} (US ${entry.us})` : `US ${entry.us} (UK ${entry.uk})`, 564, currentY);
 
-    currentY += 26;
-    ctx.font = 'bold 14px "Courier New", Courier, monospace';
+    currentY += 24;
+    ctx.font = 'bold 13px "Courier New", Courier, monospace';
     ctx.textAlign = 'left';
-    ctx.fillText('CONFIRMED DIAMETER:', 36, currentY);
+    ctx.fillText('CONFIRMED DIAMETER (Ø):', 36, currentY);
     ctx.textAlign = 'right';
-    ctx.fillText(`${measuredDiameterMm.toFixed(2)} MM`, 564, currentY);
-
-    if (isUkPrimary) {
-      currentY += 20;
-      ctx.font = '12px "Courier New", Courier, monospace';
-      ctx.fillStyle = '#475569';
-      ctx.textAlign = 'left';
-      ctx.fillText('EQUIVALENT US SIZE:', 36, currentY);
-      ctx.textAlign = 'right';
-      ctx.fillText(`US ${entry.us}`, 564, currentY);
-    }
+    ctx.fillText(`${measuredDiameterMm.toFixed(2)} MM  (${(measuredDiameterMm / 25.4).toFixed(3)}″)`, 564, currentY);
 
     currentY += 16;
     drawDoubleLine(currentY);
-    currentY += 22;
+    currentY += 18;
+
+    // 7B. COMPLETE INTERNATIONAL REFERENCE CONVERSION MATRIX (Surrounding Sizes)
+    ctx.fillStyle = '#0f172a';
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 11px "Courier New", Courier, monospace';
+    ctx.fillText('★ INTERNATIONAL SIZE CONVERSION MATRIX ★', 300, currentY);
+    currentY += 16;
+
+    // Table Header
+    ctx.fillStyle = '#64748b';
+    ctx.font = 'bold 10px "Courier New", Courier, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('US      UK      EU      IT      JP      DIAMETER     CIRCUMF', 36, currentY);
+    currentY += 10;
+    drawDashedLine(currentY);
+    currentY += 14;
+
+    // Find surrounding entries to print accurate reference table on slip
+    const entryIndex = RING_SIZE_DATA.findIndex((r) => r.us === entry.us);
+    const centerIdx = entryIndex >= 0 ? entryIndex : 14;
+    const startIdx = Math.max(0, Math.min(RING_SIZE_DATA.length - 5, centerIdx - 2));
+    const referenceWindow = RING_SIZE_DATA.slice(startIdx, startIdx + 5);
+
+    referenceWindow.forEach((row) => {
+      const isSelected = row.us === entry.us;
+      const isWideBand = row.usNumeric === entry.usNumeric + 0.5;
+
+      ctx.textAlign = 'left';
+      if (isSelected) {
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 11px "Courier New", Courier, monospace';
+      } else {
+        ctx.fillStyle = '#475569';
+        ctx.font = '10px "Courier New", Courier, monospace';
+      }
+
+      const colUs = row.us.padEnd(8, ' ');
+      const colUk = row.uk.padEnd(8, ' ');
+      const colEu = String(row.eu).padEnd(8, ' ');
+      const colIt = String(row.it).padEnd(8, ' ');
+      const colJp = String(row.jpCh || row.jp).padEnd(8, ' ');
+      const colDiam = `${row.diameterMm.toFixed(2)}mm`.padEnd(13, ' ');
+      const colCirc = `${row.circumferenceMm}mm`;
+
+      const rowText = `${colUs}${colUk}${colEu}${colIt}${colJp}${colDiam}${colCirc}`;
+      const suffix = isSelected ? '  ◄ YOUR FIT' : isWideBand ? '  (+½ Wide)' : '';
+
+      ctx.fillText(rowText + suffix, 36, currentY);
+      currentY += 16;
+    });
+
+    currentY += 6;
+    drawDashedLine(currentY);
+    currentY += 18;
 
     // 8. Size Trivia & Fun Fact Box (Special Highlight on Bill Slip)
     const rawFact = funFact || getRingSizeFunFact(entry.us, entry.uk);
@@ -379,9 +469,11 @@ export function generateRingSlipImage(data: RingSlipData): Promise<string> {
  * Helper to trigger automatic file download in the browser
  */
 export function downloadPngFile(dataUrl: string, fileName: string) {
+  // Strip any illegal characters or path traversal markers
+  const sanitizedFileName = fileName.replace(/[/\\?%*:|"<>]/g, '_');
   const link = document.createElement('a');
   link.href = dataUrl;
-  link.download = fileName;
+  link.download = sanitizedFileName;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

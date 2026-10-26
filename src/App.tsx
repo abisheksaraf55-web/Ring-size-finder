@@ -8,7 +8,7 @@ import { ScreenRingSizer } from './components/ScreenRingSizer';
 import { CalibrationModal } from './components/CalibrationModal';
 import { DropHintModal } from './components/DropHintModal';
 import { PrintableSizerModal } from './components/PrintableSizerModal';
-import { ATELIER_RINGS } from './data/ringSizes';
+import { ATELIER_RINGS, RING_SIZE_DATA } from './data/ringSizes';
 import { JewelryRing, MetalType } from './types/ring';
 import { getUniversalPixelsPerMm } from './utils/screenScale';
 
@@ -31,11 +31,18 @@ export default function App() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const urlSize = params.get('size');
-      if (urlSize) return urlSize;
+      if (urlSize) {
+        // Strict validation: Only accept authenticated sizes from RING_SIZE_DATA
+        const matched = RING_SIZE_DATA.find((r) => r.us === urlSize.trim());
+        if (matched) return matched.us;
+      }
     }
     try {
       const saved = localStorage.getItem('aura_oro_saved_size');
-      if (saved) return saved;
+      if (saved) {
+        const matched = RING_SIZE_DATA.find((r) => r.us === saved.trim());
+        if (matched) return matched.us;
+      }
     } catch {
       // ignore
     }
