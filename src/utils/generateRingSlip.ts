@@ -105,7 +105,7 @@ export function generateRingSlipImage(data: RingSlipData): Promise<string> {
     ctx.fillText(`DATE:     ${dateStr}`, 36, 188);
 
     ctx.textAlign = 'right';
-    ctx.fillText(isCalibrated ? 'STATUS: CALIBRATED (1:1)' : 'STATUS: STD SCREEN (96DPI)', 564, 168);
+    ctx.fillText('STATUS: UNIVERSAL 1:1 SCALE', 564, 168);
     ctx.fillText('TYPE:   DIGITAL GAUGE', 564, 188);
 
     drawDashedLine(205);

@@ -54,8 +54,8 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
   const [isSlipModalOpen, setIsSlipModalOpen] = useState<boolean>(false);
   const [slipImageUrl, setSlipImageUrl] = useState<string>('');
 
-  // Safe wrapper for HTML5 Vibration API on mobile devices (always default ON)
-  const triggerHaptic = useCallback((pattern: number | number[] = 10) => {
+  // Safe wrapper for HTML5 Vibration API on mobile devices with boosted tactile strength
+  const triggerHaptic = useCallback((pattern: number | number[] = 35) => {
     try {
       if (
         typeof window !== 'undefined' &&
@@ -74,6 +74,8 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const activeRowRef = useRef<HTMLDivElement>(null);
+  const centerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const rafIdRef = useRef<number | null>(null);
 
   // Track last haptic size to provide subtle detents only when crossing ring size boundaries
   const isMountedRef = useRef<boolean>(false);
@@ -82,14 +84,14 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
   // Matched standard size
   const closestEntry: RingSizeEntry = getClosestSizeByDiameter(diameterMm);
 
-  // Trigger subtle haptic vibration when user scrolls/slides between ring sizes
+  // Trigger boosted haptic vibration when user scrolls/slides between ring sizes
   useEffect(() => {
     if (isMountedRef.current) {
       if (closestEntry.us !== lastHapticSizeRef.current) {
         lastHapticSizeRef.current = closestEntry.us;
-        // Whole sizes get a slightly distinct notch (12ms), half sizes get a quick subtle tick (7ms)
+        // Whole sizes get a strong, punchy notch (45ms), half sizes get a solid distinct tick (30ms)
         const isWholeSize = !closestEntry.us.includes('½') && !closestEntry.us.includes('.');
-        triggerHaptic(isWholeSize ? 12 : 7);
+        triggerHaptic(isWholeSize ? 45 : 30);
       }
     } else {
       isMountedRef.current = true;
@@ -109,7 +111,8 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
 
   // Auto-scroll the size table to keep the active row in view when diameter changes
   useEffect(() => {
-    if (activeRowRef.current && tableContainerRef.current) {
+    // Only auto-scroll when on the table sub-tab and not actively dragging to eliminate main-thread lag
+    if (activeSubTab === 'table' && !isDragging && activeRowRef.current && tableContainerRef.current) {
       const container = tableContainerRef.current;
       const row = activeRowRef.current;
       const rowTop = row.offsetTop;
@@ -121,7 +124,7 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
         behavior: 'smooth'
       });
     }
-  }, [closestEntry.us]);
+  }, [closestEntry.us, activeSubTab, isDragging]);
 
   // Adjust diameter with clamp between 11.5mm and 24.8mm (supporting up to US Size 16)
   const handleDiameterChange = (val: number) => {
@@ -133,23 +136,23 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
   };
 
   const handleFineTune = (delta: number) => {
-    triggerHaptic(8);
+    triggerHaptic(35);
     handleDiameterChange(diameterMm + delta);
   };
 
   const handleResetDiameter = () => {
-    triggerHaptic([8, 25, 8]);
+    triggerHaptic([40, 50, 40]);
     handleDiameterChange(17.32);
   };
 
   const handleSelectRow = (entry: RingSizeEntry) => {
-    triggerHaptic(12);
+    triggerHaptic(45);
     handleDiameterChange(entry.diameterMm);
   };
 
   const handleSaveSize = async () => {
-    // Celebratory haptic pulse pattern on save
-    triggerHaptic([20, 60, 30, 60, 40]);
+    // Celebratory high-intensity haptic pulse pattern on save
+    triggerHaptic([60, 80, 80, 80, 120]);
     setSelectedSize(closestEntry.us);
     setIsSaved(true);
     setIsGeneratingSlip(true);
@@ -200,29 +203,57 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
     }
   };
 
-  // Convert mm diameter to screen pixels
-  const ringDiameterPx = Math.round(diameterMm * pixelsPerMm);
+  // Convert mm diameter to screen pixels with subpixel precision for analog smoothness
+  const ringDiameterPx = Number((diameterMm * pixelsPerMm).toFixed(2));
   const radiusMm = diameterMm / 2;
 
-  // Pointer drag to resize ring interactively on canvas/screen
+  // Pointer drag to resize ring interactively on canvas/screen with 120fps/60fps smoothness
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true);
+    triggerHaptic(35);
     e.currentTarget.setPointerCapture(e.pointerId);
+
+    // Cache center coordinates once at start of drag to avoid forced reflows during movement
+    if (ringContainerRef.current) {
+      const rect = ringContainerRef.current.getBoundingClientRect();
+      centerRef.current = {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      };
+    }
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDragging || !ringContainerRef.current) return;
-    const rect = ringContainerRef.current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const distPx = Math.sqrt(Math.pow(e.clientX - centerX, 2) + Math.pow(e.clientY - centerY, 2));
+    if (!isDragging) return;
+
+    if (centerRef.current.x === 0 && centerRef.current.y === 0 && ringContainerRef.current) {
+      const rect = ringContainerRef.current.getBoundingClientRect();
+      centerRef.current = {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      };
+    }
+
+    const { x: centerX, y: centerY } = centerRef.current;
+    const distPx = Math.hypot(e.clientX - centerX, e.clientY - centerY);
     const newDiameterPx = distPx * 2;
     const computedMm = newDiameterPx / pixelsPerMm;
-    handleDiameterChange(computedMm);
+
+    // Throttle to display refresh cycle via requestAnimationFrame
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+    }
+    rafIdRef.current = requestAnimationFrame(() => {
+      handleDiameterChange(computedMm);
+    });
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
     setIsDragging(false);
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch {
@@ -267,7 +298,10 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
             <button
               role="tab"
               aria-selected={activeSubTab === 'sizer'}
-              onClick={() => setActiveSubTab('sizer')}
+              onClick={() => {
+                triggerHaptic(30);
+                setActiveSubTab('sizer');
+              }}
               className={`py-3 transition-all cursor-pointer relative font-medium ${
                 activeSubTab === 'sizer'
                   ? 'text-slate-900 font-bold bg-slate-50'
@@ -283,7 +317,10 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
             <button
               role="tab"
               aria-selected={activeSubTab === 'dimensions'}
-              onClick={() => setActiveSubTab('dimensions')}
+              onClick={() => {
+                triggerHaptic(30);
+                setActiveSubTab('dimensions');
+              }}
               className={`py-3 transition-all cursor-pointer relative font-medium ${
                 activeSubTab === 'dimensions'
                   ? 'text-slate-900 font-bold bg-slate-50'
@@ -299,7 +336,10 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
             <button
               role="tab"
               aria-selected={activeSubTab === 'table'}
-              onClick={() => setActiveSubTab('table')}
+              onClick={() => {
+                triggerHaptic(30);
+                setActiveSubTab('table');
+              }}
               className={`py-3 transition-all cursor-pointer relative font-medium ${
                 activeSubTab === 'table'
                   ? 'text-slate-900 font-bold bg-slate-50'
@@ -332,7 +372,10 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
                 {/* Standard Selector Toggle: UK / AU vs US / CA */}
                 <div className="flex items-center bg-white border border-slate-200 rounded-full p-0.5 shadow-xs font-sans">
                   <button
-                    onClick={() => setStandard('UK')}
+                    onClick={() => {
+                      triggerHaptic(35);
+                      setStandard('UK');
+                    }}
                     title="Use UK & Australia Letter Sizes (A to Z+7)"
                     className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
                       standard === 'UK'
@@ -343,7 +386,10 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
                     UK / AU
                   </button>
                   <button
-                    onClick={() => setStandard('US')}
+                    onClick={() => {
+                      triggerHaptic(35);
+                      setStandard('US');
+                    }}
                     title="Use USA & Canada Number Sizes"
                     className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
                       standard === 'US'
@@ -356,7 +402,10 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
                 </div>
 
                 <button
-                  onClick={() => setShowDemoRing(!showDemoRing)}
+                  onClick={() => {
+                    triggerHaptic(35);
+                    setShowDemoRing(!showDemoRing);
+                  }}
                   className={`px-2.5 py-0.5 rounded-full border transition-all text-[11px] font-medium cursor-pointer ${
                     showDemoRing
                       ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
@@ -395,16 +444,22 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
                   style={{
                     width: `${ringDiameterPx}px`,
                     height: `${ringDiameterPx}px`,
-                    transition: isDragging ? 'none' : 'width 0.15s ease-out, height 0.15s ease-out'
+                    transition: isDragging
+                      ? 'none'
+                      : 'width 0.24s cubic-bezier(0.16, 1, 0.3, 1), height 0.24s cubic-bezier(0.16, 1, 0.3, 1)',
+                    willChange: isDragging ? 'width, height' : 'auto'
                   }}
-                  className="relative rounded-full flex items-center justify-center"
+                  className="relative rounded-full flex items-center justify-center transform-gpu"
                 >
                   {/* DEMO: The Italian Minimal Luxe Bar Ring from Pinterest photo */}
                   {showDemoRing && (
                     <div
                       style={{
                         inset: `-${Math.max(6, Math.round(3.5 * pixelsPerMm * 0.35))}px`,
-                        boxShadow: '0 8px 25px rgba(0,0,0,0.25)'
+                        boxShadow: '0 8px 25px rgba(0,0,0,0.25)',
+                        transition: isDragging
+                          ? 'none'
+                          : 'inset 0.24s cubic-bezier(0.16, 1, 0.3, 1)'
                       }}
                       className="absolute rounded-full border-2 border-amber-500 bg-gradient-to-tr from-amber-600 via-amber-300 to-amber-500 pointer-events-none ring-shadow transition-all"
                     >
@@ -418,9 +473,13 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
                     style={{
                       boxSizing: 'content-box',
                       width: `${ringDiameterPx}px`,
-                      height: `${ringDiameterPx}px`
+                      height: `${ringDiameterPx}px`,
+                      transition: isDragging
+                        ? 'none'
+                        : 'width 0.24s cubic-bezier(0.16, 1, 0.3, 1), height 0.24s cubic-bezier(0.16, 1, 0.3, 1)',
+                      willChange: isDragging ? 'width, height' : 'auto'
                     }}
-                    className="rounded-full border-2 border-slate-900 bg-transparent flex items-center justify-center relative shadow-xs"
+                    className="rounded-full border-2 border-slate-900 bg-transparent flex items-center justify-center relative shadow-xs transform-gpu"
                   >
                     {/* Center Target Point */}
                     <div className="w-1.5 h-1.5 bg-slate-900 rounded-full" />
@@ -431,22 +490,36 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
                     <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 h-[1px] w-3 bg-slate-900 pointer-events-none" />
                     <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 h-[1px] w-3 bg-slate-900 pointer-events-none" />
 
-                    {/* Radius Line & Exact Radius Text (Matches '9,9' in photo!) */}
+                    {/* Full Inside Diameter Dimension Line & Exact Diameter Value */}
                     <div
-                      style={{ width: `${ringDiameterPx / 2}px` }}
-                      className="absolute right-1/2 top-1/2 h-[1.5px] bg-slate-900 origin-right pointer-events-none flex items-center justify-center"
+                      style={{
+                        width: '100%',
+                        transition: isDragging
+                          ? 'none'
+                          : 'width 0.24s cubic-bezier(0.16, 1, 0.3, 1)'
+                      }}
+                      className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[1px] bg-slate-300 pointer-events-none flex items-center justify-center"
                     >
-                      <span className="text-[11px] font-mono font-bold text-slate-900 bg-white px-1.5 py-0.2 rounded shadow-xs -translate-y-3.5 whitespace-nowrap border border-slate-200">
-                        {radiusMm.toFixed(1)} mm
-                      </span>
+                      {/* Left and right inner rim dimension arrows */}
+                      <div className="absolute left-1 w-1.5 h-1.5 border-l border-t border-slate-700 rotate-[-45deg]" />
+                      <div className="absolute right-1 w-1.5 h-1.5 border-r border-t border-slate-700 rotate-[45deg]" />
+
+                      {/* Clear Diameter Number & Active Size Badge */}
+                      <div className="bg-white px-2 py-0.5 rounded shadow-xs border border-slate-300 flex items-center gap-1.5 text-[11px] font-mono font-bold text-slate-900 select-none z-10">
+                        <span>Ø {diameterMm.toFixed(2)} mm</span>
+                        <span className="text-slate-300 font-normal">|</span>
+                        <span className="text-slate-700 font-semibold">
+                          {standard === 'UK' ? `UK ${closestEntry.uk}` : `US ${closestEntry.us}`}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Drag Resize Handle Knob */}
                     <div
                       title="Drag to resize ring"
-                      className="absolute -right-3.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-slate-900 text-white flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition-transform cursor-ew-resize z-30"
+                      className="absolute -right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition-transform cursor-ew-resize z-30 touch-none select-none ring-4 ring-white"
                     >
-                      <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-white shadow-xs" />
                     </div>
                   </div>
                 </div>
@@ -466,13 +539,13 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => handleFineTune(-0.1)}
-                    className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded font-mono text-xs cursor-pointer font-bold"
+                    className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded font-mono text-xs cursor-pointer font-bold active:scale-95 transition-transform"
                   >
                     -0.1
                   </button>
                   <button
                     onClick={() => handleFineTune(0.1)}
-                    className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded font-mono text-xs cursor-pointer font-bold"
+                    className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded font-mono text-xs cursor-pointer font-bold active:scale-95 transition-transform"
                   >
                     +0.1
                   </button>
@@ -482,10 +555,14 @@ export const ScreenRingSizer: React.FC<ScreenRingSizerProps> = ({
                   type="range"
                   min={11.5}
                   max={24.8}
-                  step={0.05}
+                  step={0.02}
                   value={diameterMm}
+                  onPointerDown={() => setIsDragging(true)}
+                  onPointerUp={() => setIsDragging(false)}
+                  onTouchStart={() => setIsDragging(true)}
+                  onTouchEnd={() => setIsDragging(false)}
                   onChange={(e) => handleDiameterChange(parseFloat(e.target.value))}
-                  className="flex-1 accent-slate-900 cursor-pointer h-2 bg-slate-200 rounded-lg appearance-none"
+                  className="flex-1 accent-slate-900 cursor-pointer h-2 bg-slate-200 rounded-lg appearance-none transition-none"
                 />
 
                 <button

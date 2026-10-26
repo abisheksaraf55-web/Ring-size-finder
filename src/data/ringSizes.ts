@@ -3,16 +3,12 @@ import { RingSizeEntry, JewelryRing, MetalType } from '../types/ring';
 // Standard international ring conversion table
 // Diameters and circumferences according to ISO 8653 and standard US/UK jeweler standards
 export const RING_SIZE_DATA: RingSizeEntry[] = [
-  { us: '0000', usNumeric: -1, uk: '-', eu: 36.5, it: -3.5, jp: 1, jpCh: '-', diameterMm: 11.63, circumferenceMm: 36.5 },
-  { us: '00', usNumeric: -0.5, uk: '-', eu: 37.8, it: -2.2, jp: 1, jpCh: '-', diameterMm: 12.04, circumferenceMm: 37.8 },
-  { us: '0', usNumeric: 0.0, uk: 'A', eu: 39.1, it: -0.9, jp: 1, jpCh: '1', diameterMm: 12.45, circumferenceMm: 39.1 },
-  { us: '¼', usNumeric: 0.25, uk: 'A ½', eu: 39.7, it: -0.3, jp: 1, jpCh: '1', diameterMm: 12.65, circumferenceMm: 39.7 },
-  { us: '½', usNumeric: 0.5, uk: 'B', eu: 40.4, it: 0.4, jp: 1, jpCh: '1.5', diameterMm: 12.85, circumferenceMm: 40.4 },
-  { us: '¾', usNumeric: 0.75, uk: 'B ½', eu: 41.0, it: 1.0, jp: 2, jpCh: '2', diameterMm: 13.06, circumferenceMm: 41.0 },
-  { us: '1', usNumeric: 1.0, uk: 'C', eu: 41.7, it: 1.7, jp: 2, jpCh: '2.5', diameterMm: 13.26, circumferenceMm: 41.7 },
-  { us: '1 ¼', usNumeric: 1.25, uk: 'C ½', eu: 42.3, it: 2.3, jp: 3, jpCh: '3', diameterMm: 13.46, circumferenceMm: 42.3 },
-  { us: '1 ½', usNumeric: 1.5, uk: 'D', eu: 42.9, it: 2.9, jp: 3, jpCh: '3.5', diameterMm: 13.67, circumferenceMm: 42.9 },
-  { us: '2', usNumeric: 2.0, uk: 'E', eu: 43.6, it: 3.6, jp: 3, jpCh: '4', diameterMm: 13.87, circumferenceMm: 43.6 },
+  { us: '0', usNumeric: 0.0, uk: 'A', eu: 36.5, it: -3.5, jp: 1, jpCh: '1', diameterMm: 11.63, circumferenceMm: 36.5 },
+  { us: '½', usNumeric: 0.5, uk: 'A ½', eu: 37.8, it: -2.2, jp: 1, jpCh: '1.5', diameterMm: 12.04, circumferenceMm: 37.8 },
+  { us: '1', usNumeric: 1.0, uk: 'B', eu: 39.1, it: -0.9, jp: 1, jpCh: '2', diameterMm: 12.45, circumferenceMm: 39.1 },
+  { us: '1 ½', usNumeric: 1.5, uk: 'C', eu: 40.4, it: 0.4, jp: 2, jpCh: '2.5', diameterMm: 12.85, circumferenceMm: 40.4 },
+  { us: '2', usNumeric: 2.0, uk: 'D', eu: 41.7, it: 1.7, jp: 2, jpCh: '3', diameterMm: 13.26, circumferenceMm: 41.7 },
+  { us: '2 ½', usNumeric: 2.5, uk: 'E', eu: 42.9, it: 2.9, jp: 3, jpCh: '3.5', diameterMm: 13.67, circumferenceMm: 42.9 },
   { us: '3', usNumeric: 3.0, uk: 'F', eu: 44.2, it: 4.2, jp: 4, jpCh: '4', diameterMm: 14.07, circumferenceMm: 44.2 },
   { us: '3 ½', usNumeric: 3.5, uk: 'G', eu: 45.5, it: 5.5, jp: 5, jpCh: '5.5', diameterMm: 14.48, circumferenceMm: 45.5 },
   { us: '4', usNumeric: 4.0, uk: 'H', eu: 46.8, it: 6.8, jp: 7, jpCh: '7', diameterMm: 14.88, circumferenceMm: 46.8 },
@@ -31,15 +27,15 @@ export const RING_SIZE_DATA: RingSizeEntry[] = [
   { us: '10 ½', usNumeric: 10.5, uk: 'U ½', eu: 63.4, it: 23.4, jp: 22, jpCh: '22.5', diameterMm: 20.17, circumferenceMm: 63.4 },
   { us: '11', usNumeric: 11.0, uk: 'V ½', eu: 64.6, it: 24.6, jp: 23, jpCh: '24', diameterMm: 20.57, circumferenceMm: 64.6 },
   { us: '11 ½', usNumeric: 11.5, uk: 'W ½', eu: 65.9, it: 25.9, jp: 24, jpCh: '25', diameterMm: 20.98, circumferenceMm: 65.9 },
-  { us: '12', usNumeric: 12.0, uk: 'Y', eu: 67.2, it: 27.2, jp: 25, jpCh: '26', diameterMm: 21.39, circumferenceMm: 67.2 },
-  { us: '12 ½', usNumeric: 12.5, uk: 'Z', eu: 68.5, it: 28.5, jp: 26, jpCh: '27.5', diameterMm: 21.79, circumferenceMm: 68.5 },
-  { us: '13', usNumeric: 13.0, uk: 'Z+1', eu: 69.7, it: 29.7, jp: 27, jpCh: '28.5', diameterMm: 22.20, circumferenceMm: 69.7 },
-  { us: '13 ½', usNumeric: 13.5, uk: 'Z+2', eu: 71.0, it: 31.0, jp: 28, jpCh: '29.5', diameterMm: 22.61, circumferenceMm: 71.0 },
-  { us: '14', usNumeric: 14.0, uk: 'Z+3', eu: 72.3, it: 32.3, jp: 29, jpCh: '31', diameterMm: 23.01, circumferenceMm: 72.3 },
-  { us: '14 ½', usNumeric: 14.5, uk: 'Z+4', eu: 73.6, it: 33.6, jp: 30, jpCh: '32.5', diameterMm: 23.42, circumferenceMm: 73.6 },
-  { us: '15', usNumeric: 15.0, uk: 'Z+5', eu: 74.9, it: 34.9, jp: 31, jpCh: '34', diameterMm: 23.83, circumferenceMm: 74.9 },
-  { us: '15 ½', usNumeric: 15.5, uk: 'Z+6', eu: 76.1, it: 36.1, jp: 32, jpCh: '35.5', diameterMm: 24.23, circumferenceMm: 76.1 },
-  { us: '16', usNumeric: 16.0, uk: 'Z+7', eu: 77.4, it: 37.4, jp: 33, jpCh: '37', diameterMm: 24.64, circumferenceMm: 77.4 }
+  { us: '12', usNumeric: 12.0, uk: 'X ½', eu: 67.2, it: 27.2, jp: 25, jpCh: '26', diameterMm: 21.39, circumferenceMm: 67.2 },
+  { us: '12 ½', usNumeric: 12.5, uk: 'Y ½', eu: 68.5, it: 28.5, jp: 26, jpCh: '27.5', diameterMm: 21.79, circumferenceMm: 68.5 },
+  { us: '13', usNumeric: 13.0, uk: 'Z ½', eu: 69.7, it: 29.7, jp: 27, jpCh: '28.5', diameterMm: 22.20, circumferenceMm: 69.7 },
+  { us: '13 ½', usNumeric: 13.5, uk: 'Z+1', eu: 71.0, it: 31.0, jp: 28, jpCh: '29.5', diameterMm: 22.61, circumferenceMm: 71.0 },
+  { us: '14', usNumeric: 14.0, uk: 'Z+2', eu: 72.3, it: 32.3, jp: 29, jpCh: '31', diameterMm: 23.01, circumferenceMm: 72.3 },
+  { us: '14 ½', usNumeric: 14.5, uk: 'Z+3', eu: 73.6, it: 33.6, jp: 30, jpCh: '32.5', diameterMm: 23.42, circumferenceMm: 73.6 },
+  { us: '15', usNumeric: 15.0, uk: 'Z+4', eu: 74.9, it: 34.9, jp: 31, jpCh: '34', diameterMm: 23.83, circumferenceMm: 74.9 },
+  { us: '15 ½', usNumeric: 15.5, uk: 'Z+5', eu: 76.1, it: 36.1, jp: 32, jpCh: '35.5', diameterMm: 24.23, circumferenceMm: 76.1 },
+  { us: '16', usNumeric: 16.0, uk: 'Z+6', eu: 77.4, it: 37.4, jp: 33, jpCh: '37', diameterMm: 24.64, circumferenceMm: 77.4 }
 ];
 
 export const POPULAR_COINS = [
